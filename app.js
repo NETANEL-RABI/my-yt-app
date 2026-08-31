@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // רכיבי התחברות
   const authBtn = document.getElementById('authBtn');
   const authModal = document.getElementById('authModal');
-  const closeModal = document.getElementById('closeModal');
+  const closeAuthModal = document.getElementById('closeAuthModal');
   const loginSubmitBtn = document.getElementById('loginSubmitBtn');
   const usernameInput = document.getElementById('usernameInput');
   const userGreeting = document.getElementById('userGreeting');
@@ -18,23 +18,75 @@ document.addEventListener('DOMContentLoaded', () => {
   const navHome = document.getElementById('navHome');
   const navShorts = document.getElementById('navShorts');
   const navHistory = document.getElementById('navHistory');
+  const navWatchLater = document.getElementById('navWatchLater');
 
+  // רכיבי נגן פנימי
+  const videoModal = document.getElementById('videoModal');
+  const youtubeIframe = document.getElementById('youtubeIframe');
+  const closeVideoModal = document.getElementById('closeVideoModal');
+
+  // רכיבי מצב לילה
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const themeToggleIcon = themeToggleBtn.querySelector('.material-icons');
+
+  // רכיבי סינון תגיות
+  const filterChips = document.querySelector('.filter-chips');
+
+  // פונקציות טעינה ראשוניות
   initUser();
+  initTheme();
+  fetchVideos('שירים מומלצים'); // ברירת מחדל
 
-  // אירועי ניווט
-  navHome.addEventListener('click', () => { setTab(navHome); fetchVideos('חדשות טכנולוגיה'); });
+  // --- אירועי ניווט ---
+  navHome.addEventListener('click', () => { setTab(navHome); fetchVideos('שירים מומלצים'); });
   navShorts.addEventListener('click', () => { setTab(navShorts); fetchShorts(); });
-  navHistory.addEventListener('click', () => { setTab(navHistory); displayHistory(); });
+  navHistory.addEventListener('click', () => { setTab(navHistory); displayList('watchHistory', 'היסטוריית צפייה'); });
+  navWatchLater.addEventListener('click', () => { setTab(navWatchLater); displayList('watchLater', 'צפייה מאוחרת'); });
 
   searchBtn.addEventListener('click', () => fetchVideos(searchInput.value));
   searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchVideos(searchInput.value); });
 
-  // טעינת ראשונית
-  fetchVideos('שירים מומלצים');
+  // --- אירועי סינון קטגוריות (תגיות) ---
+  filterChips.addEventListener('click', (e) => {
+    if (e.target.classList.contains('chip')) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      e.target.classList.add('active');
+      fetchVideos(e.target.dataset.query);
+    }
+  });
 
-  // פונקציות חיפוש וטעינה
+  // --- אירועי מצב לילה (Dark Mode) ---
+  themeToggleBtn.addEventListener('click', () => {
+    if (document.body.classList.contains('dark-mode')) {
+      document.body.classList.replace('dark-mode', 'light-mode');
+      themeToggleIcon.textContent = 'dark_mode';
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.body.classList.replace('light-mode', 'dark-mode');
+      themeToggleIcon.textContent = 'light_mode';
+      localStorage.setItem('theme', 'dark');
+    }
+  });
+
+  function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.body.classList.add(`${savedTheme}-mode`);
+    themeToggleIcon.textContent = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
+  }
+
+  // --- אירועי נגן וידאו פנימי ---
+  closeVideoModal.addEventListener('click', () => {
+    videoModal.style.display = 'none';
+    youtubeIframe.src = ''; // עצירת הסרטון בעת הסגירה
+  });
+
+  window.addEventListener('click', (e) => {
+    if (e.target === videoModal) closeVideoModal.click();
+  });
+
+  // --- פונקציות ליבה ---
   async function fetchVideos(query) {
-    if (!query.trim()) return;
+    if (!query || !query.trim()) return;
     sectionTitle.textContent = `תוצאות עבור: ${query}`;
     videoGrid.classList.remove('shorts-mode');
     
@@ -63,40 +115,85 @@ document.addEventListener('DOMContentLoaded', () => {
       const title = item.snippet.title;
       const thumbnail = item.snippet.thumbnails.medium.url;
 
+      const isShorts = videoGrid.classList.contains('shorts-mode');
+      const isInWatchLater = checkItemExists('watchLater', videoId);
+
       const card = document.createElement('div');
       card.className = 'video-card';
       card.innerHTML = `
-        <img class="thumbnail" src="${thumbnail}" alt="${title}">
+        <div class="thumbnail-container">
+          <img class="thumbnail" src="${thumbnail}" alt="${title}">
+          <i class="material-icons watch-later-icon" data-videoid="${videoId}" data-title="${title}" data-thumbnail="${thumbnail}">
+            ${isInWatchLater ? 'star' : 'star_border'}
+          </h3>
+        </div>
         <div class="video-info"><div class="video-title">${title}</div></div>
       `;
 
-      card.addEventListener('click', () => {
-        saveToHistory({ videoId, title, thumbnail });
-        window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
+      // אירועי לחיצה
+      card.addEventListener('click', (e) => {
+        // מניעת הפעלת הנגן אם המשתמש לחץ על כפתור הלייק בלבד
+        if (e.target.classList.contains('watch-later-icon')) return;
+
+        saveToList('watchHistory', { videoId, title, thumbnail });
+        openEmbeddedPlayer(videoId);
       });
+
+      // אירוע לחיצה על לייק/מועדפים
+      card.querySelector('.watch-later-icon').addEventListener('click', toggleWatchLater);
 
       videoGrid.appendChild(card);
     });
   }
 
-  // ניהול היסטוריה
-  function saveToHistory(video) {
-    let history = JSON.parse(localStorage.getItem('watchHistory')) || [];
-    history = [video, ...history.filter(item => item.videoId !== video.videoId)];
-    localStorage.setItem('watchHistory', JSON.stringify(history));
+  function openEmbeddedPlayer(videoId) {
+    youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    videoModal.style.display = 'flex';
   }
 
-  function displayHistory() {
-    sectionTitle.textContent = 'היסטוריית צפייה';
+  // --- ניהול רשימות (היסטוריה, מועדפים, צפייה מאוחרת) ---
+  function saveToList(listName, video) {
+    let list = JSON.parse(localStorage.getItem(listName)) || [];
+    list = [video, ...list.filter(item => item.videoId !== video.videoId)];
+    localStorage.setItem(listName, JSON.stringify(list));
+  }
+
+  function checkItemExists(listName, videoId) {
+    const list = JSON.parse(localStorage.getItem(listName)) || [];
+    return list.some(item => item.videoId === videoId);
+  }
+
+  function toggleWatchLater(e) {
+    e.stopPropagation(); // מניעת הפעלת הנגן
+    const data = e.target.dataset;
+    const isAdded = e.target.textContent === 'star';
+
+    if (isAdded) {
+      removeFromList('watchLater', data.videoid);
+      e.target.textContent = 'star_border';
+    } else {
+      saveToList('watchLater', { videoId: data.videoid, title: data.title, thumbnail: data.thumbnail });
+      e.target.textContent = 'star';
+    }
+  }
+
+  function removeFromList(listName, videoId) {
+    let list = JSON.parse(localStorage.getItem(listName)) || [];
+    list = list.filter(item => item.videoId !== videoId);
+    localStorage.setItem(listName, JSON.stringify(list));
+  }
+
+  function displayList(listName, title) {
+    sectionTitle.textContent = title;
     videoGrid.classList.remove('shorts-mode');
-    const history = JSON.parse(localStorage.getItem('watchHistory')) || [];
+    const list = JSON.parse(localStorage.getItem(listName)) || [];
     
-    if (history.length === 0) {
-      videoGrid.innerHTML = '<p>אין עדיין סרטונים בהיסטוריה.</p>';
+    if (list.length === 0) {
+      videoGrid.innerHTML = `<p>אין עדיין סרטונים ברשימה הזו.</p>`;
       return;
     }
 
-    const items = history.map(item => ({
+    const items = list.map(item => ({
       id: { videoId: item.videoId },
       snippet: { title: item.title, thumbnails: { medium: { url: item.thumbnail } } }
     }));
@@ -104,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderVideos(items);
   }
 
-  // ניהול משתמשים
+  // --- ניהול משתמשים (הרשמה) ---
   function initUser() {
     const user = localStorage.getItem('currentUser');
     if (user) {
@@ -123,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  closeModal.addEventListener('click', () => authModal.style.display = 'none');
+  closeAuthModal.addEventListener('click', () => authModal.style.display = 'none');
 
   loginSubmitBtn.addEventListener('click', () => {
     const val = usernameInput.value.trim();

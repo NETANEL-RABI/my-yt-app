@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const youtubeIframe = document.getElementById('youtubeIframe');
   const closeVideoModal = document.getElementById('closeVideoModal');
   const shareBtn = document.getElementById('shareBtn');
+  const directDownloadBtn = document.getElementById('directDownloadBtn');
 
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   const themeToggleIcon = themeToggleBtn.querySelector('.material-icons');
@@ -193,6 +194,66 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('הקישור הועתק ללוח!');
     }
   });
+
+  directDownloadBtn.addEventListener('click', async () => {
+    if (!currentPlayingVideoId) return;
+    
+    const originalText = directDownloadBtn.innerHTML;
+    directDownloadBtn.innerHTML = '<i class="material-icons spin">autorenew</i> מוריד...';
+    directDownloadBtn.disabled = true;
+
+    try {
+      const downloadServiceUrl = `https://loader.to/api/ajax/download?format=mp3&url=https://www.youtube.com/watch?v=${currentPlayingVideoId}`;
+      
+      const response = await fetch(downloadServiceUrl);
+      const data = await response.json();
+
+      if (data && data.id) {
+        checkDownloadStatus(data.id, originalText);
+      } else {
+        throw new Error('שגיאה בביצוע ההורדה');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('לא ניתן להשלים את ההורדה עבור סרטון זה.');
+      directDownloadBtn.innerHTML = originalText;
+      directDownloadBtn.disabled = false;
+    }
+  });
+
+  async function checkDownloadStatus(id, originalBtnText) {
+    const statusUrl = `https://loader.to/api/ajax/progress?id=${id}`;
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(statusUrl);
+        const data = await res.json();
+
+        if (data.success === 1 && data.download_url) {
+          clearInterval(interval);
+          
+          const link = document.createElement('a');
+          link.href = data.download_url;
+          link.setAttribute('download', 'audio.mp3');
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          directDownloadBtn.innerHTML = originalBtnText;
+          directDownloadBtn.disabled = false;
+        } else if (data.success === 0) {
+          clearInterval(interval);
+          alert('שגיאה בהמרת הקובץ.');
+          directDownloadBtn.innerHTML = originalBtnText;
+          directDownloadBtn.disabled = false;
+        }
+      } catch (e) {
+        clearInterval(interval);
+        directDownloadBtn.innerHTML = originalBtnText;
+        directDownloadBtn.disabled = false;
+      }
+    }, 3000);
+  }
 
   closeVideoModal.addEventListener('click', () => {
     videoModal.style.display = 'none';

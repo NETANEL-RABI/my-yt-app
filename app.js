@@ -3,8 +3,10 @@ const API_KEY = 'AIzaSyBSFaBPrBxBXgOpLxRr6nCP9YRcYv6fB9o';
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
+  const voiceSearchBtn = document.getElementById('voiceSearchBtn');
   const videoGrid = document.getElementById('videoGrid');
   const sectionTitle = document.getElementById('sectionTitle');
+  const loadingIndicator = document.getElementById('loadingIndicator');
 
   // רכיבי התחברות
   const authBtn = document.getElementById('authBtn');
@@ -20,102 +22,136 @@ document.addEventListener('DOMContentLoaded', () => {
   const navHistory = document.getElementById('navHistory');
   const navWatchLater = document.getElementById('navWatchLater');
 
-  // רכיבי נגן פנימי
+  // נגן פנימי ושיתוף
   const videoModal = document.getElementById('videoModal');
   const youtubeIframe = document.getElementById('youtubeIframe');
   const closeVideoModal = document.getElementById('closeVideoModal');
+  const shareBtn = document.getElementById('shareBtn');
 
-  // רכיבי מצב לילה
+  // מצב לילה וסינון
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   const themeToggleIcon = themeToggleBtn.querySelector('.material-icons');
-
-  // רכיבי סינון תגיות
   const filterChips = document.querySelector('.filter-chips');
 
-  // פונקציות טעינה ראשוניות
+  // משתני ניהול גלילה אינסופית
+  let nextPageToken = '';
+  let currentQuery = 'טכנולוגיה ומחשבים';
+  let isFetching = false;
+  let isShortsMode = false;
+  let currentPlayingVideoId = '';
+
   initUser();
   initTheme();
-  fetchVideos('שירים מומלצים'); // ברירת מחדל
+  fetchVideos(currentQuery);
 
-  // --- אירועי ניווט ---
-  navHome.addEventListener('click', () => { setTab(navHome); fetchVideos('שירים מומלצים'); });
-  navShorts.addEventListener('click', () => { setTab(navShorts); fetchShorts(); });
-  navHistory.addEventListener('click', () => { setTab(navHistory); displayList('watchHistory', 'היסטוריית צפייה'); });
-  navWatchLater.addEventListener('click', () => { setTab(navWatchLater); displayList('watchLater', 'צפייה מאוחרת'); });
+  // --- חיפוש קולי (Voice Search) ---
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'he-IL';
 
-  searchBtn.addEventListener('click', () => fetchVideos(searchInput.value));
-  searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') fetchVideos(searchInput.value); });
+    voiceSearchBtn.addEventListener('click', () => {
+      recognition.start();
+      voiceSearchBtn.classList.add('listening');
+    });
 
-  // --- אירועי סינון קטגוריות (תגיות) ---
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      searchInput.value = transcript;
+      fetchVideos(transcript);
+      voiceSearchBtn.classList.remove('listening');
+    };
+
+    recognition.onerror = () => voiceSearchBtn.classList.remove('listening');
+    recognition.onend = () => voiceSearchBtn.classList.remove('listening');
+  } else {
+    voiceSearchBtn.style.display = 'none';
+  }
+
+  // --- גלילה אינסופית (Infinite Scroll) ---
+  window.addEventListener('scroll', () => {
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+      if (!isFetching && nextPageToken) {
+        fetchMoreVideos();
+      }
+    }
+  });
+
+  // --- ניווט וסינון ---
+  navHome.addEventListener('click', () => { setTab(navHome); isShortsMode = false; fetchVideos('טכנולוגיה ומחשבים'); });
+  navShorts.addEventListener('click', () => { setTab(navShorts); isShortsMode = true; fetchShorts(); });
+  navHistory.addEventListener('click', () => { setTab(navHistory); nextPageToken = ''; displayList('watchHistory', 'היסטוריית צפייה'); });
+  navWatchLater.addEventListener('click', () => { setTab(navWatchLater); nextPageToken = ''; displayList('watchLater', 'צפייה מאוחרת'); });
+
+  searchBtn.addEventListener('click', () => { isShortsMode = false; fetchVideos(searchInput.value); });
+  searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { isShortsMode = false; fetchVideos(searchInput.value); } });
+
   filterChips.addEventListener('click', (e) => {
     if (e.target.classList.contains('chip')) {
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       e.target.classList.add('active');
+      isShortsMode = false;
       fetchVideos(e.target.dataset.query);
     }
   });
 
-  // --- אירועי מצב לילה (Dark Mode) ---
-  themeToggleBtn.addEventListener('click', () => {
-    if (document.body.classList.contains('dark-mode')) {
-      document.body.classList.replace('dark-mode', 'light-mode');
-      themeToggleIcon.textContent = 'dark_mode';
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.body.classList.replace('light-mode', 'dark-mode');
-      themeToggleIcon.textContent = 'light_mode';
-      localStorage.setItem('theme', 'dark');
-    }
-  });
-
-  function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.body.classList.add(`${savedTheme}-mode`);
-    themeToggleIcon.textContent = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
-  }
-
-  // --- אירועי נגן וידאו פנימי ---
-  closeVideoModal.addEventListener('click', () => {
-    videoModal.style.display = 'none';
-    youtubeIframe.src = ''; // עצירת הסרטון בעת הסגירה
-  });
-
-  window.addEventListener('click', (e) => {
-    if (e.target === videoModal) closeVideoModal.click();
-  });
-
-  // --- פונקציות ליבה ---
+  // --- טעינת סרטונים מה-API ---
   async function fetchVideos(query) {
     if (!query || !query.trim()) return;
+    currentQuery = query;
+    nextPageToken = '';
     sectionTitle.textContent = `תוצאות עבור: ${query}`;
     videoGrid.classList.remove('shorts-mode');
-    
-    try {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${API_KEY}`);
-      const data = await res.json();
-      if (data.items) renderVideos(data.items);
-    } catch (err) { console.error(err); }
+    videoGrid.innerHTML = '';
+
+    await loadVideoData(false);
   }
 
   async function fetchShorts() {
+    currentQuery = 'shorts';
+    nextPageToken = '';
     sectionTitle.textContent = 'סרטוני Shorts';
     videoGrid.classList.add('shorts-mode');
+    videoGrid.innerHTML = '';
 
-    try {
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=shorts&type=video&videoDuration=short&key=${API_KEY}`);
-      const data = await res.json();
-      if (data.items) renderVideos(data.items);
-    } catch (err) { console.error(err); }
+    await loadVideoData(true);
   }
 
-  function renderVideos(videos) {
-    videoGrid.innerHTML = '';
+  async function fetchMoreVideos() {
+    if (!nextPageToken) return;
+    await loadVideoData(isShortsMode, true);
+  }
+
+  async function loadVideoData(shorts = false, append = false) {
+    isFetching = true;
+    loadingIndicator.style.display = 'block';
+
+    let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(currentQuery)}&type=video&key=${API_KEY}`;
+    if (shorts) url += '&videoDuration=short';
+    if (nextPageToken) url += `&pageToken=${nextPageToken}`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.items) {
+        nextPageToken = data.nextPageToken || '';
+        renderVideos(data.items, append);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      isFetching = false;
+      loadingIndicator.style.display = 'none';
+    }
+  }
+
+  function renderVideos(videos, append = false) {
+    if (!append) videoGrid.innerHTML = '';
+
     videos.forEach((item) => {
       const videoId = item.id.videoId;
       const title = item.snippet.title;
       const thumbnail = item.snippet.thumbnails.medium.url;
-
-      const isShorts = videoGrid.classList.contains('shorts-mode');
       const isInWatchLater = checkItemExists('watchLater', videoId);
 
       const card = document.createElement('div');
@@ -125,33 +161,58 @@ document.addEventListener('DOMContentLoaded', () => {
           <img class="thumbnail" src="${thumbnail}" alt="${title}">
           <i class="material-icons watch-later-icon" data-videoid="${videoId}" data-title="${title}" data-thumbnail="${thumbnail}">
             ${isInWatchLater ? 'star' : 'star_border'}
-          </h3>
+          </i>
         </div>
         <div class="video-info"><div class="video-title">${title}</div></div>
       `;
 
-      // אירועי לחיצה
       card.addEventListener('click', (e) => {
-        // מניעת הפעלת הנגן אם המשתמש לחץ על כפתור הלייק בלבד
         if (e.target.classList.contains('watch-later-icon')) return;
-
         saveToList('watchHistory', { videoId, title, thumbnail });
         openEmbeddedPlayer(videoId);
       });
 
-      // אירוע לחיצה על לייק/מועדפים
       card.querySelector('.watch-later-icon').addEventListener('click', toggleWatchLater);
-
       videoGrid.appendChild(card);
     });
   }
 
+  // --- נגן ושיתוף ---
   function openEmbeddedPlayer(videoId) {
+    currentPlayingVideoId = videoId;
     youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     videoModal.style.display = 'flex';
   }
 
-  // --- ניהול רשימות (היסטוריה, מועדפים, צפייה מאוחרת) ---
+  shareBtn.addEventListener('click', () => {
+    if (currentPlayingVideoId) {
+      const link = `https://www.youtube.com/watch?v=${currentPlayingVideoId}`;
+      navigator.clipboard.writeText(link);
+      alert('הקישור הועתק ללוח!');
+    }
+  });
+
+  closeVideoModal.addEventListener('click', () => {
+    videoModal.style.display = 'none';
+    youtubeIframe.src = '';
+  });
+
+  // --- מצב לילה ---
+  themeToggleBtn.addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark-mode');
+    document.body.classList.toggle('dark-mode', !isDark);
+    document.body.classList.toggle('light-mode', isDark);
+    themeToggleIcon.textContent = isDark ? 'dark_mode' : 'light_mode';
+    localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  });
+
+  function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    document.body.classList.add(`${savedTheme}-mode`);
+    themeToggleIcon.textContent = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
+  }
+
+  // --- ניהול רשימות ומצב משתמש ---
   function saveToList(listName, video) {
     let list = JSON.parse(localStorage.getItem(listName)) || [];
     list = [video, ...list.filter(item => item.videoId !== video.videoId)];
@@ -164,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function toggleWatchLater(e) {
-    e.stopPropagation(); // מניעת הפעלת הנגן
+    e.stopPropagation();
     const data = e.target.dataset;
     const isAdded = e.target.textContent === 'star';
 
@@ -201,7 +262,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderVideos(items);
   }
 
-  // --- ניהול משתמשים (הרשמה) ---
   function initUser() {
     const user = localStorage.getItem('currentUser');
     if (user) {

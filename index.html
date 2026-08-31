@@ -8,9 +8,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-
-  <header class="navbar">
+<body class="light-mode"> <header class="navbar">
     <div class="logo">
       <i class="material-icons brand-icon">play_circle_filled</i>
       <span>MediaApp</span>
@@ -24,26 +22,46 @@
     <div class="user-actions">
       <span id="userGreeting"></span>
       <button id="authBtn" class="btn">התחברות</button>
+      <button id="themeToggleBtn" class="icon-btn">
+        <i class="material-icons">dark_mode</i>
+      </button>
     </div>
   </header>
 
   <nav class="category-bar">
     <button id="navHome" class="active"><i class="material-icons">home</i> ראשי</button>
     <button id="navShorts"><i class="material-icons">smartphone</i> Shorts</button>
+    <button id="navWatchLater"><i class="material-icons">watch_later</i> צפייה מאוחרת</button>
     <button id="navHistory"><i class="material-icons">history</i> היסטוריה</button>
   </nav>
 
+  <div class="filter-chips">
+    <button class="chip active" data-query="שירים מומלצים">הכל</button>
+    <button class="chip" data-query="מוזיקה 2024">מוזיקה</button>
+    <button class="chip" data-query="גיימינג">גיימינג</button>
+    <button class="chip" data-query="חדשות">חדשות</button>
+    <button class="chip" data-query="פודקאסט">פודקאסטים</button>
+  </div>
+
   <main class="content-container">
     <h2 id="sectionTitle">סרטונים מומלצים</h2>
-    <div id="videoGrid" class="video-grid"></div>
+    <div id="videoGrid" class="video-grid">
+      </div>
   </main>
 
   <div id="authModal" class="modal">
     <div class="modal-content">
-      <span id="closeModal" class="close">&times;</span>
+      <span id="closeAuthModal" class="close">&times;</span>
       <h3>התחברות / הרשמה</h3>
       <input type="text" id="usernameInput" placeholder="הכנס שם משתמש">
       <button id="loginSubmitBtn" class="btn">התחבר</button>
+    </div>
+  </div>
+
+  <div id="videoModal" class="modal">
+    <div class="modal-content video-player-container">
+      <span id="closeVideoModal" class="close">&times;</span>
+      <iframe id="youtubeIframe" src="" frameborder="0" allowfullscreen></iframe>
     </div>
   </div>
 

@@ -1,3 +1,17 @@
+// התקנה ישירה של האפליקציה (PWA)
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then((choiceResult) => {
+    if (choiceResult.outcome === 'accepted') {
+      console.log('המשתמש התקין את האפליקציה');
+    }
+    deferredPrompt = null;
+  });
+});
+
 const API_KEY = 'AIzaSyBSFaBPrBxBXgOpLxRr6nCP9YRcYv6fB9o';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const sectionTitle = document.getElementById('sectionTitle');
   const loadingIndicator = document.getElementById('loadingIndicator');
 
-  // רכיבי התחברות
   const authBtn = document.getElementById('authBtn');
   const authModal = document.getElementById('authModal');
   const closeAuthModal = document.getElementById('closeAuthModal');
@@ -16,24 +29,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const usernameInput = document.getElementById('usernameInput');
   const userGreeting = document.getElementById('userGreeting');
 
-  // רכיבי ניווט
   const navHome = document.getElementById('navHome');
   const navShorts = document.getElementById('navShorts');
   const navHistory = document.getElementById('navHistory');
   const navWatchLater = document.getElementById('navWatchLater');
 
-  // נגן פנימי ושיתוף
   const videoModal = document.getElementById('videoModal');
   const youtubeIframe = document.getElementById('youtubeIframe');
   const closeVideoModal = document.getElementById('closeVideoModal');
   const shareBtn = document.getElementById('shareBtn');
 
-  // מצב לילה וסינון
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   const themeToggleIcon = themeToggleBtn.querySelector('.material-icons');
   const filterChips = document.querySelector('.filter-chips');
 
-  // משתני ניהול גלילה אינסופית
   let nextPageToken = '';
   let currentQuery = 'טכנולוגיה ומחשבים';
   let isFetching = false;
@@ -44,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   fetchVideos(currentQuery);
 
-  // --- חיפוש קולי (Voice Search) ---
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -68,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     voiceSearchBtn.style.display = 'none';
   }
 
-  // --- גלילה אינסופית (Infinite Scroll) ---
   window.addEventListener('scroll', () => {
     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
       if (!isFetching && nextPageToken) {
@@ -77,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- ניווט וסינון ---
   navHome.addEventListener('click', () => { setTab(navHome); isShortsMode = false; fetchVideos('טכנולוגיה ומחשבים'); });
   navShorts.addEventListener('click', () => { setTab(navShorts); isShortsMode = true; fetchShorts(); });
   navHistory.addEventListener('click', () => { setTab(navHistory); nextPageToken = ''; displayList('watchHistory', 'היסטוריית צפייה'); });
@@ -95,7 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- טעינת סרטונים מה-API ---
   async function fetchVideos(query) {
     if (!query || !query.trim()) return;
     currentQuery = query;
@@ -103,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sectionTitle.textContent = `תוצאות עבור: ${query}`;
     videoGrid.classList.remove('shorts-mode');
     videoGrid.innerHTML = '';
-
     await loadVideoData(false);
   }
 
@@ -113,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sectionTitle.textContent = 'סרטוני Shorts';
     videoGrid.classList.add('shorts-mode');
     videoGrid.innerHTML = '';
-
     await loadVideoData(true);
   }
 
@@ -177,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- נגן ושיתוף ---
   function openEmbeddedPlayer(videoId) {
     currentPlayingVideoId = videoId;
     youtubeIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
@@ -197,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
     youtubeIframe.src = '';
   });
 
-  // --- מצב לילה ---
   themeToggleBtn.addEventListener('click', () => {
     const isDark = document.body.classList.contains('dark-mode');
     document.body.classList.toggle('dark-mode', !isDark);
@@ -212,7 +213,6 @@ document.addEventListener('DOMContentLoaded', () => {
     themeToggleIcon.textContent = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
   }
 
-  // --- ניהול רשימות ומצב משתמש ---
   function saveToList(listName, video) {
     let list = JSON.parse(localStorage.getItem(listName)) || [];
     list = [video, ...list.filter(item => item.videoId !== video.videoId)];

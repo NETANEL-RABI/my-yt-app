@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MediaApp - עם הרשמה, היסטוריה ושורטס</title>
+  <title>MediaApp - עם חיפוש קולי וגלילה אינסופית</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="light-mode"> <header class="navbar">
+<body class="light-mode">
+
+  <!-- סרגל עליון -->
+  <header class="navbar">
     <div class="logo">
       <i class="material-icons brand-icon">play_circle_filled</i>
       <span>MediaApp</span>
@@ -17,6 +20,10 @@
     <div class="search-container">
       <input type="text" id="searchInput" placeholder="חיפוש...">
       <button id="searchBtn"><i class="material-icons">search</i></button>
+      <!-- כפתור חיפוש קולי -->
+      <button id="voiceSearchBtn" class="icon-btn voice-btn" title="חיפוש קולי">
+        <i class="material-icons">mic</i>
+      </button>
     </div>
 
     <div class="user-actions">
@@ -28,6 +35,7 @@
     </div>
   </header>
 
+  <!-- תפריט ניווט לקטגוריות -->
   <nav class="category-bar">
     <button id="navHome" class="active"><i class="material-icons">home</i> ראשי</button>
     <button id="navShorts"><i class="material-icons">smartphone</i> Shorts</button>
@@ -35,20 +43,24 @@
     <button id="navHistory"><i class="material-icons">history</i> היסטוריה</button>
   </nav>
 
+  <!-- סרגל תגיות לסינון קטגוריות -->
   <div class="filter-chips">
-    <button class="chip active" data-query="שירים מומלצים">הכל</button>
-    <button class="chip" data-query="מוזיקה 2024">מוזיקה</button>
-    <button class="chip" data-query="גיימינג">גיימינג</button>
-    <button class="chip" data-query="חדשות">חדשות</button>
-    <button class="chip" data-query="פודקאסט">פודקאסטים</button>
+    <button class="chip active" data-query="טכנולוגיה ומחשבים">הכל</button>
+    <button class="chip" data-query="מדריכי תכנות">תכנות</button>
+    <button class="chip" data-query="חדשות טכנולוגיה">חדשות</button>
+    <button class="chip" data-query="פודקאסט טכנולוגי">פודקאסטים</button>
   </div>
 
+  <!-- תוכן מרכזי -->
   <main class="content-container">
-    <h2 id="sectionTitle">סרטונים מומלצים</h2>
-    <div id="videoGrid" class="video-grid">
-      </div>
+    <h2 id="sectionTitle">תוכן מומלץ</h2>
+    <div id="videoGrid" class="video-grid"></div>
+    <div id="loadingIndicator" class="loading-spinner" style="display: none;">
+      <i class="material-icons spin">autorenew</i>
+    </div>
   </main>
 
+  <!-- חלון מודאלי להרשמה / התחברות -->
   <div id="authModal" class="modal">
     <div class="modal-content">
       <span id="closeAuthModal" class="close">&times;</span>
@@ -58,9 +70,13 @@
     </div>
   </div>
 
+  <!-- נגן וידאו פנימי עם כפתור שיתוף -->
   <div id="videoModal" class="modal">
     <div class="modal-content video-player-container">
-      <span id="closeVideoModal" class="close">&times;</span>
+      <div class="modal-header">
+        <button id="shareBtn" class="btn share-btn"><i class="material-icons">share</i> שתף קישור</button>
+        <span id="closeVideoModal" class="close">&times;</span>
+      </div>
       <iframe id="youtubeIframe" src="" frameborder="0" allowfullscreen></iframe>
     </div>
   </div>

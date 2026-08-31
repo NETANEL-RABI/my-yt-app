@@ -42,7 +42,7 @@
   </nav>
 
   <div class="filter-chips">
-    <button class="chip active" data-query="טכנולוגיה ومחשבים">הכל</button>
+    <button class="chip active" data-query="טכנולוגיה ומחשבים">הכל</button>
     <button class="chip" data-query="מדריכי תכנות">תכנות</button>
     <button class="chip" data-query="חדשות טכנולוגיה">חדשות</button>
     <button class="chip" data-query="פודקאסט טכנולוגי">פודקאסטים</button>
@@ -68,7 +68,10 @@
   <div id="videoModal" class="modal">
     <div class="modal-content video-player-container">
       <div class="modal-header">
-        <button id="shareBtn" class="btn share-btn"><i class="material-icons">share</i> שתף קישור</button>
+        <div class="modal-actions">
+          <button id="shareBtn" class="btn share-btn"><i class="material-icons">share</i> שתף</button>
+          <button id="directDownloadBtn" class="btn download-btn"><i class="material-icons">file_download</i> הורד שמע (MP3)</button>
+        </div>
         <span id="closeVideoModal" class="close">&times;</span>
       </div>
       <iframe id="youtubeIframe" src="" frameborder="0" allowfullscreen></iframe>

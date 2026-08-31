@@ -1,55 +1,40 @@
-/* חיפוש קולי */
-.voice-btn {
-  margin-right: 8px;
-  background-color: var(--chip-bg);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* עיצוב מותאם ומדויק ל-YouTube */
+.video-card {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
 }
 
-.voice-btn.listening {
-  color: #ff0000;
-  animation: pulse 1s infinite;
+.thumbnail-container {
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 16/9;
 }
 
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
+.thumbnail {
+  border-radius: 12px;
+  transition: border-radius 0.2s ease;
 }
 
-/* כפתור שיתוף בנגן */
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.video-card:hover .thumbnail {
+  border-radius: 0; /* אפקט יפה במעבר עכבר */
+}
+
+.video-title {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-top: 8px;
+  color: var(--text-color);
+}
+
+.category-bar {
+  border-bottom: none;
   padding: 8px 16px;
-  background-color: var(--card-bg);
 }
 
-.share-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-}
-
-/* אינדיקטור טעינה לגלילה אינסופית */
-.loading-spinner {
-  text-align: center;
-  padding: 20px;
-  font-size: 28px;
-  color: var(--primary-color);
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.chip {
+  border-radius: 8px;
+  font-size: 14px;
+  padding: 6px 12px;
 }
